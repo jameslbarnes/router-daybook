@@ -34,10 +34,10 @@
 
     <!-- LOADING -->
     <section class="card state" id="loading">
-      <div class="spinner"></div>
+      <canvas id="loading-signal" class="loading-signal" width="268" height="132" aria-hidden="true"></canvas>
       <p class="status" id="loading-text" role="status" aria-live="polite">Getting set up…</p>
       <div class="think-stream" id="think-stream" aria-hidden="true" hidden></div>
-      <p class="sub">Files and voice stay on-device; text is written by your Claude subscription. Nothing posts until you approve.</p>
+      <p class="sub">Uses Scope-allowed local Claude/Codex session history plus the recent Router feed for cohort context. The scoped digest is written through your Claude subscription; nothing posts until you approve.</p>
     </section>
 
     <!-- EMPTY -->

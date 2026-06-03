@@ -64,6 +64,7 @@ const els = {
   date: $('date'),
   discoball: $('discoball'),
   discoballWelcome: $('discoball-welcome'),
+  loadingSignal: $('loading-signal'),
   stats: $('stats'),
   sProjects: $('s-projects'),
   sMessages: $('s-messages'),
@@ -189,6 +190,142 @@ function setView(view) {
 }
 
 const hostLabel = (url) => { try { return new URL(url).host; } catch { return url || ''; } };
+
+function startLoadingSignal(canvas) {
+  if (!canvas) return;
+  const ctx2d = canvas.getContext('2d');
+  if (!ctx2d) return;
+  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const DPR = Math.min(window.devicePixelRatio || 1, 2);
+  const GP = ['#00e6d2', '#ff7a00', '#b6ff1a', '#ff3030', '#0a6cff', '#ffd000'];
+  const ROWS = 12;
+  const TILT = 0.34;
+  const facets = [];
+  for (let i = 0; i < ROWS; i++) {
+    const lat = -Math.PI / 2 + Math.PI * (i + 0.5) / ROWS;
+    const cols = Math.max(4, Math.round(Math.cos(lat) * ROWS * 2.1));
+    for (let j = 0; j < cols; j++) {
+      facets.push({ lat, lon: 2 * Math.PI * (j + 0.5) / cols, ph: (i * 1.7 + j * 0.63) % 6.283, dw: 2 * Math.PI / cols });
+    }
+  }
+
+  const size = () => {
+    const w = canvas.clientWidth || 268;
+    const h = canvas.clientHeight || 132;
+    const pxW = Math.round(w * DPR);
+    const pxH = Math.round(h * DPR);
+    if (canvas.width !== pxW || canvas.height !== pxH) {
+      canvas.width = pxW;
+      canvas.height = pxH;
+      ctx2d.setTransform(DPR, 0, 0, DPR, 0, 0);
+    }
+    return { w, h };
+  };
+
+  const draw = (time = 0) => {
+    const t = reduceMotion ? 0.8 : time / 1000;
+    const { w, h } = size();
+    ctx2d.clearRect(0, 0, w, h);
+    const cx = w / 2;
+    const cy = h / 2 - 4;
+    const R = 37;
+
+    ctx2d.save();
+    ctx2d.lineCap = 'square';
+    for (let i = 0; i < 5; i++) {
+      const y = cy - 45 + i * 22;
+      const shift = reduceMotion ? 8 : (t * 36 + i * 13) % 32;
+      ctx2d.strokeStyle = i % 2 ? 'rgba(10,108,255,0.32)' : 'rgba(0,230,210,0.36)';
+      ctx2d.lineWidth = 1.25;
+      ctx2d.beginPath();
+      for (let x = cx - 124 - shift; x < cx + 124; x += 32) {
+        ctx2d.moveTo(x, y);
+        ctx2d.lineTo(x + 15, y + (i % 2 ? 1 : -1));
+      }
+      ctx2d.stroke();
+    }
+
+    ctx2d.strokeStyle = '#15131f';
+    ctx2d.lineWidth = 2;
+    ctx2d.beginPath();
+    const x0 = cx - 116, x1 = cx + 116, y0 = cy - 55, y1 = cy + 55;
+    ctx2d.moveTo(x0, y0 + 17); ctx2d.lineTo(x0, y0); ctx2d.lineTo(x0 + 28, y0);
+    ctx2d.moveTo(x1 - 28, y0); ctx2d.lineTo(x1, y0); ctx2d.lineTo(x1, y0 + 17);
+    ctx2d.moveTo(x0, y1 - 17); ctx2d.lineTo(x0, y1); ctx2d.lineTo(x0 + 28, y1);
+    ctx2d.moveTo(x1 - 28, y1); ctx2d.lineTo(x1, y1); ctx2d.lineTo(x1, y1 - 17);
+    ctx2d.stroke();
+    ctx2d.restore();
+
+    for (let ring = 0; ring < 3; ring++) {
+      const sides = 22;
+      const rr = R + 18 + ring * 15 + Math.sin(t * 2.1 + ring) * 2.5;
+      ctx2d.beginPath();
+      for (let i = 0; i <= sides; i++) {
+        const a = (i / sides) * Math.PI * 2 + ring * 0.12;
+        const x = cx + Math.cos(a) * rr;
+        const y = cy + Math.sin(a) * rr * 0.34;
+        if (i === 0) ctx2d.moveTo(x, y); else ctx2d.lineTo(x, y);
+      }
+      ctx2d.strokeStyle = ring === 0 ? 'rgba(0,230,210,0.5)' : (ring === 1 ? 'rgba(10,108,255,0.36)' : 'rgba(21,19,31,0.22)');
+      ctx2d.lineWidth = 1.4;
+      ctx2d.stroke();
+    }
+
+    const spin = t * 0.95;
+    const g = ctx2d.createRadialGradient(cx - R * 0.35, cy - R * 0.35, R * 0.15, cx, cy, R);
+    g.addColorStop(0, 'rgba(64,66,84,0.96)');
+    g.addColorStop(1, 'rgba(14,14,22,0.94)');
+    ctx2d.beginPath();
+    ctx2d.arc(cx, cy, R, 0, Math.PI * 2);
+    ctx2d.fillStyle = g;
+    ctx2d.fill();
+
+    const vis = [];
+    for (const f of facets) {
+      const cl = Math.cos(f.lat), sl = Math.sin(f.lat);
+      const xRaw = cl * Math.cos(f.lon + spin), yRaw = sl, zRaw = cl * Math.sin(f.lon + spin);
+      const y = yRaw * Math.cos(TILT) - zRaw * Math.sin(TILT);
+      const z = yRaw * Math.sin(TILT) + zRaw * Math.cos(TILT);
+      if (z < 0) continue;
+      vis.push({ x: xRaw, y, z, cl, ph: f.ph, dw: f.dw });
+    }
+    vis.sort((a, b) => a.z - b.z);
+    const dh = Math.PI / ROWS;
+    const dx = 1.5 + 0.7 * Math.sin(t * 3.3);
+    for (const d of vis) {
+      let px = cx + d.x * R;
+      const py = cy - d.y * R;
+      const fw = Math.max(1.8, R * d.dw * d.cl * 0.98);
+      const fh = Math.max(1.8, R * dh * 0.98);
+      if (Math.sin(t * 8 + Math.floor(py / 6) * 1.5) > 0.955) px += (Math.sin(t * 86 + py) * 5) | 0;
+      const ci = (Math.floor(d.ph * 6 + t * 2.6) + (Math.sin(t * 9 + d.ph * 5) > 0.9 ? 3 : 0)) % GP.length;
+      const fx = px - fw / 2;
+      const fy = py - fh / 2;
+      ctx2d.fillStyle = 'rgba(255,40,40,0.5)';
+      ctx2d.fillRect(fx + dx, fy, fw, fh);
+      ctx2d.fillStyle = 'rgba(0,210,255,0.5)';
+      ctx2d.fillRect(fx - dx, fy, fw, fh);
+      ctx2d.globalAlpha = 0.62 + 0.38 * d.z;
+      ctx2d.fillStyle = GP[ci];
+      ctx2d.fillRect(fx, fy, fw, fh);
+      ctx2d.globalAlpha = 1;
+    }
+
+    ctx2d.strokeStyle = '#15131f';
+    ctx2d.lineWidth = 1.5;
+    ctx2d.beginPath();
+    for (let i = 0; i < 7; i++) {
+      const y = cy - 27 + i * 9 + Math.sin(t * 3 + i) * 1.2;
+      const half = 21 + i * 4;
+      ctx2d.moveTo(cx - half, y);
+      ctx2d.lineTo(cx + half, y + (i % 2 ? 1 : -1));
+    }
+    ctx2d.stroke();
+
+    if (!reduceMotion) requestAnimationFrame(draw);
+  };
+  draw();
+}
 
 // Undo toast — exclusions & rule-adds ONLY (never inclusion; you can't un-send).
 let toastTimer = 0, toastEl = null;
@@ -376,7 +513,7 @@ let introPrefetch = null; // promise of intro-start, warmed during the welcome
 function showWelcome() {
   const fallback =
     'The Router is the cohort’s shared notebook — a live feed where the builders around you post what they’re making, wrestling with, and looking for. You’ll answer a few questions about your work, and they become an introduction you approve before anything posts.';
-  els.welcomeBody.innerHTML = '<span class="shimmer">reading your work…</span>';
+  els.welcomeBody.innerHTML = '<span class="shimmer">checking Scope-allowed local sessions and recent Router feed…</span>';
   setView('welcome');
   // start the big welcome disco ball once the card is visible (sized)
   if (!welcomeBallOn) { welcomeBallOn = true; requestAnimationFrame(() => startDiscoBall(els.discoballWelcome)); }
@@ -394,7 +531,7 @@ async function startInterview() {
   ivTranscript = [];
   ivIndex = 0;
   setView('loading');
-  els.loadingText.textContent = 'Reading your recent work…';
+  els.loadingText.textContent = 'Checking Scope-allowed local sessions…';
   try {
     const q = await (introPrefetch || window.daybook.introStart());
     introPrefetch = null;
@@ -693,7 +830,7 @@ async function startRefine(seed) {
   }
   ivTranscript = [];
   setView('loading');
-  els.loadingText.textContent = 'Reading your draft…';
+  els.loadingText.textContent = 'Preparing your draft…';
   try {
     const q = await window.daybook.refineStart({ draft: refineDraft });
     if (q && q.error) throw new Error(q.error);
@@ -725,7 +862,7 @@ async function run() {
   els.post.textContent = 'Post to cohort →';
   els.skip.textContent = 'Skip';
   setView('loading');
-  els.loadingText.textContent = 'Reading sessions since your last post…';
+  els.loadingText.textContent = 'Checking sessions since your last post…';
   let collected;
   try {
     collected = await window.daybook.collect();
@@ -799,7 +936,7 @@ function applyResult(res) {
 
 async function generate() {
   setView('loading');
-  els.loadingText.textContent = 'Reading the cohort feed and writing the update…';
+  els.loadingText.textContent = 'Checking the cohort feed and writing the update…';
   try {
     const res = await window.daybook.generate({
       digest: ctx.digest, name: ctx.name, dateLabel: ctx.dateLabel,
@@ -1109,4 +1246,5 @@ els.retry.addEventListener('click', boot);
 els.openFeed.addEventListener('click', () => window.daybook.openFeed(ctx.server));
 
 startDiscoBall(els.discoball);
+startLoadingSignal(els.loadingSignal);
 boot();
