@@ -17,6 +17,107 @@ const HOME = os.homedir();
 const CLAUDE_PROJECTS = path.join(HOME, '.claude', 'projects');
 const FLAG = path.join(HOME, '.router-daybook', 'introduced');
 
+function normPath(p) { return String(p || '').replace(/\\/g, '/').toLowerCase(); }
+function isInternalAgentPath(p) {
+  const n = normPath(p);
+  return n.includes('/.codex/skills/') || n.includes('/.codex/plugins/cache/');
+}
+
+function capabilitySummaryFromSlug(slug, { fallback = true } = {}) {
+  const raw = String(slug || '').trim();
+  const s = raw.toLowerCase();
+  const known = [
+    [/publicpr/, 'public PR drafting'],
+    [/resume.*positioning|resume/, 'resume positioning review'],
+    [/web3.*jobs/, 'web3 jobs repair'],
+    [/openai.*docs/, 'OpenAI documentation lookup'],
+    [/plugin.*creator/, 'plugin scaffolding'],
+    [/skill.*creator/, 'workflow authoring'],
+    [/skill.*installer/, 'workflow installation'],
+    [/browser|control.*browser/, 'browser testing'],
+    [/github|^gh-/, 'GitHub workflow'],
+    [/gmail/, 'email triage'],
+    [/calendar/, 'calendar scheduling'],
+    [/documents?/, 'document editing'],
+    [/presentations?/, 'presentation building'],
+    [/spreadsheet/, 'spreadsheet work'],
+    [/transition/, 'transition polish'],
+    [/design/, 'design review'],
+    [/chart/, 'chart design'],
+  ];
+  const hit = known.find(([re]) => re.test(s));
+  if (hit) return hit[1];
+  if (!fallback) return '';
+  return raw
+    .replace(/^.*[\\/]/, '')
+    .replace(/\b(skill|plugin)\b/gi, '')
+    .replace(/[-_]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 60) || 'agent workflow';
+}
+
+function internalCapabilitySummary(p) {
+  return capabilitySummaryFromSlug(path.basename(String(p || '')));
+}
+
+function skillTermSummary(slug) {
+  const known = capabilitySummaryFromSlug(slug, { fallback: false });
+  if (known) return known;
+  return /[-_]/.test(String(slug || '')) ? capabilitySummaryFromSlug(slug) : '';
+}
+
+function safeProjectName(p) {
+  return isInternalAgentPath(p) ? internalCapabilitySummary(p) : path.basename(p);
+}
+
+function safeProjectDescription(p, description) {
+  if (isInternalAgentPath(p)) return `Local workflow for ${internalCapabilitySummary(p)}.`;
+  return description || '';
+}
+
+function sanitizeProjectsForIntro(projects = []) {
+  const seen = new Set();
+  const out = [];
+  for (const p of projects || []) {
+    const name = safeProjectName(p.path || p.name || '');
+    const key = name.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ name, path: p.path || '', description: safeProjectDescription(p.path || '', p.description || '') });
+  }
+  return out;
+}
+
+function describeSkillMentions(line) {
+  return String(line || '')
+    .replace(/\[\$?([a-z0-9]+(?:[-_][a-z0-9]+)*)\]\([^)]+\.codex[\\/](?:skills|plugins)[^)]+\)/gi,
+      (_m, slug) => `${capabilitySummaryFromSlug(slug)} workflow`)
+    .replace(/\.codex[\\/](?:skills|plugins)[\\/][^\s)]+/gi, '[internal agent workflow]')
+    .replace(/(?:\$|@)([a-z0-9]+(?:[-_][a-z0-9]+)*)\b/gi, (m, slug) => {
+      const summary = skillTermSummary(slug);
+      return summary ? `${summary} workflow` : m;
+    })
+    .replace(/\b([a-z0-9]+(?:[-_][a-z0-9]+)*)\s+skill\b/gi, (m, slug) => {
+      const summary = skillTermSummary(slug);
+      return summary ? `${summary} workflow` : m;
+    })
+    .replace(/\bskill\s+["'`]?([a-z0-9]+(?:[-_][a-z0-9]+)*)["'`]?/gi, (m, slug) => {
+      const summary = skillTermSummary(slug);
+      return summary ? `${summary} workflow` : m;
+    });
+}
+
+function sanitizeHistoryForIntro(history = '') {
+  return String(history || '').split('\n').filter((line) => {
+    const s = line.trim();
+    if (!s) return true;
+    if (/^Tools used:/i.test(s)) return false;
+    if (/\bSKILL\.md\b|skills_instructions|Available skills/i.test(s)) return false;
+    return true;
+  }).map(describeSkillMentions).join('\n');
+}
+
 function isIntroduced() {
   try { return fs.existsSync(FLAG); } catch { return false; }
 }
@@ -110,7 +211,7 @@ async function discoverProjects({ limit = 12 } = {}) {
     .filter(([p]) => { try { return fs.statSync(p).isDirectory(); } catch { return false; } })
     .sort((a, b) => b[1] - a[1])
     .slice(0, limit)
-    .map(([p]) => ({ name: path.basename(p), path: p, description: describe(p) }));
+    .map(([p]) => ({ name: safeProjectName(p), path: p, description: safeProjectDescription(p, describe(p)) }));
 }
 
 function buildIntroSystem(name) {
@@ -139,6 +240,7 @@ SOURCES: separate what is INFERRED from the work (hedge: "has been working on…
 PRIVACY (hard rules, never violate):
 - NEVER include secrets, API keys, tokens, passwords, .env contents, or file contents.
 - NEVER name a client, employer, or anything the author marked PRIVATE — describe such work generically ("a client project"). The exact private names must not appear anywhere in the post.
+- NEVER name internal Claude/Codex skill names, plugin slugs, AGENTS/system-prompt artifacts, .codex paths, or private agent machinery. If a capability matters, describe what it helps with in a few plain words (for example, "resume review workflow" or "browser testing"), not the internal skill term.
 - Invent nothing. Every concrete claim traces to the projects, the author's answers, or the feed.`;
 }
 
@@ -210,13 +312,15 @@ function runClaude(system, user, { timeoutMs = 150000, model, onChunk } = {}) {
 }
 
 function recentBlock(history, projects) {
+  const safeHistory = sanitizeHistoryForIntro(history);
+  const safeProjects = sanitizeProjectsForIntro(projects);
   return [
-    'RECENT WORK (from local Claude Code + Codex sessions — be specific to this):',
-    history || '(no recent activity found)',
+    'RECENT WORK (from local Claude Code + Codex sessions — be specific to this, but do not expose internal skill names):',
+    safeHistory || '(no recent activity found)',
     '',
     'PROJECTS (names + short descriptions):',
-    projects.length
-      ? projects.map((p) => `- ${p.name}${p.description ? ': ' + p.description : ''}`).join('\n')
+    safeProjects.length
+      ? safeProjects.map((p) => `- ${p.name}${p.description ? ': ' + p.description : ''}`).join('\n')
       : '(none detected)',
   ].join('\n');
 }
@@ -248,6 +352,7 @@ const interviewPurpose = (name) => `The purpose of this interview is to understa
 const INTERVIEW_CRAFT = `INTERVIEW CRAFT:
 - Ask ONE question. Concise — less is more. NEVER a compound question (no second ask tacked on after a comma).
 - Ground it in his real work so it's clearly about him — but stay natural and plain, NOT theatrical, cinematic, or over-written. No scene-setting.
+- Do not name internal Claude/Codex skill names or private agent machinery. If the underlying capability matters, describe what it helps with in a few plain words.
 - Aim at substance: who he is, what he wants, what he can offer or needs — not just a nice story.
 - Warm, curious, direct. Address him as "you". No emoji. Output the question and nothing else (in the JSON).`;
 
