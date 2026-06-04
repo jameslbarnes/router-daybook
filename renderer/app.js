@@ -161,7 +161,7 @@ const els = {
   sshSavedList: $('ssh-saved-list'),
 };
 
-let ctx = { digest: '', name: 'James', dateLabel: 'today', server: '' };
+let ctx = { digest: '', name: 'you', dateLabel: 'today', server: '' };
 let cur = { text: '', generated: '', fnMap: {}, editing: false };
 let mode = 'digest';            // 'digest' | 'intro'
 let welcomeBallOn = false;      // start the big welcome disco ball only once
@@ -298,7 +298,7 @@ async function boot() {
   els.loadingText.textContent = 'Getting set up…';
   let b;
   try { b = await window.daybook.bootstrap(); } catch (e) { return fail(e.message || String(e)); }
-  ctx.name = b.name || 'James';
+  ctx.name = b.name || b.handle || 'you';
   ctx.server = b.server || '';
   els.postingAs.innerHTML = `posting to <b>${hostLabel(b.server)}</b>`;
   if (!b.hasKey) return showConnect(); // no identity yet — join the Router first
@@ -732,7 +732,7 @@ async function run() {
   } catch (e) { return fail(e.message || String(e)); }
 
   const { stats, hasActivity, digest, name, server } = collected;
-  ctx = { digest, name: name || 'James', dateLabel: stats.date, server: server || '' };
+  ctx = { digest, name: name || 'you', dateLabel: stats.date, server: server || '' };
 
   els.sProjects.textContent = stats.projectCount;
   els.sMessages.textContent = stats.messageCount;

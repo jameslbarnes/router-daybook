@@ -23,16 +23,22 @@ let introCtx = {}; // onboarding context (history/projects/feed), reused across 
 
 // Whose day is this? Third-person voice needs a first name.
 // The user's FIRST name — the intro and daily posts address them in the third
-// person ("James shipped…", never "James Barnes shipped…"). Sourced from
-// DAYBOOK_NAME or ~/.routerrc `name`; first token only; falls back to "James".
+// person ("alice shipped…", never "Alice Smith shipped…"). Sourced from
+// DAYBOOK_NAME or ~/.routerrc `name`, then the registered ~/.routerrc `handle`
+// (which join/use-key always persist) so a user who never set an explicit name
+// is still themselves; first token only. Falls back to a neutral "you" rather
+// than any one developer's name, so an unconfigured install never labels every
+// user as the same person.
 function firstNameOf(s) { return String(s || '').trim().split(/\s+/)[0] || ''; }
 function resolveName() {
   let raw = process.env.DAYBOOK_NAME || '';
   if (!raw) {
-    try { raw = JSON.parse(fs.readFileSync(path.join(os.homedir(), '.routerrc'), 'utf8')).name || ''; }
-    catch { /* ignore */ }
+    try {
+      const rc = JSON.parse(fs.readFileSync(path.join(os.homedir(), '.routerrc'), 'utf8'));
+      raw = rc.name || rc.handle || '';
+    } catch { /* ignore */ }
   }
-  return firstNameOf(raw) || 'James';
+  return firstNameOf(raw) || 'you';
 }
 
 function createWindow() {
