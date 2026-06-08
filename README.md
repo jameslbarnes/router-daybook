@@ -91,8 +91,9 @@ No blank "introduce yourself" form. On first run you'll hit:
    draft screen → Post. After that, the `~/.router-daybook/introduced` flag is set and launches
    go straight to the daily digest.
 
-The intro and posts use **your real first name** — the prompt tells the local `claude -p`
-(which runs as *you*) to use it, so there's no name field or config to fill in.
+The intro and posts use your name from **Settings** (saved locally in
+`~/.router-daybook/profile.json`). If you leave it blank, Router uses a neutral subject
+instead of guessing.
 
 ---
 
@@ -179,6 +180,7 @@ Posts to `https://router.teleport.computer` by default; override with `ROUTER_SE
 |------|------|
 | `src/main.js` | Electron main process; registers all `ipcMain` handlers; threads scope into collect/generate; resolves the user's **first name**. |
 | `src/preload.js` | `contextBridge` — the only renderer↔main surface (`window.daybook.*`). |
+| `src/profile.js` | Local app profile (`~/.router-daybook/profile.json`), currently the Settings name. |
 | `src/transcripts.js` | Discovers + compacts sessions into a digest; **since-last-post** window; scope-filters before reading; masks secrets. Standalone-runnable. |
 | `src/reflect.js` | Spawns `claude -p` to write the post + a bundled refine question. Scrubs the digest before, and the post after. Builds its prompt from `postspec`. |
 | `src/postspec.js` | The **locked** post contract (banned phrasings, lead-in order, length, score threshold). Shared by the generator and the eval. |
@@ -190,8 +192,8 @@ Posts to `https://router.teleport.computer` by default; override with `ROUTER_SE
 | `evals/` | The locked eval: `gates.js`, `judge.js`, `score.js`, `run.js`, `rubric.md`, `fixtures/`, `draft.workflow.js`. |
 | `renderer/` | Single-window vanilla-JS UI (`index.html`, `app.js`, `styles.css`); the directly-editable draft editor + the rotating disco ball. |
 
-Persisted state lives in `~/.router-daybook/` (not the repo): `scope.json`, `redactions.json`,
-`notes.jsonl`, `patterns.json`, `checkpoint.json`, `peers.json`, `introduced`. Your interview
+Persisted state lives in `~/.router-daybook/` (not the repo): `profile.json`, `scope.json`,
+`redactions.json`, `notes.jsonl`, `patterns.json`, `checkpoint.json`, `peers.json`, `introduced`. Your interview
 transcripts are saved to `interviews/` (gitignored — personal).
 
 ---

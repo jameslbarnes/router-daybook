@@ -6,6 +6,8 @@ contextBridge.exposeInMainWorld('daybook', {
   bootstrap: () => ipcRenderer.invoke('bootstrap'),
   join: (payload) => ipcRenderer.invoke('join', payload),
   useKey: (payload) => ipcRenderer.invoke('use-key', payload),
+  settingsGet: () => ipcRenderer.invoke('settings:get'),
+  settingsSetName: (payload) => ipcRenderer.invoke('settings:setName', payload),
   welcomeMessage: () => ipcRenderer.invoke('welcome-message'),
   introStart: () => ipcRenderer.invoke('intro-start'),
   introNext: (payload) => ipcRenderer.invoke('intro-next', payload),
@@ -43,6 +45,7 @@ contextBridge.exposeInMainWorld('daybook', {
   onLinkHostChanged: (cb) => { const h = (_e, i) => cb(i); ipcRenderer.on('link-host-changed', h); return () => ipcRenderer.removeListener('link-host-changed', h); },
   // ── Scope + redaction (Invariants I1–I5) ────────────────────────────────
   scopeGet: () => ipcRenderer.invoke('scope:get'),
+  scopePickFolder: () => ipcRenderer.invoke('scope:pickFolder'),
   scopeSetRule: (payload) => ipcRenderer.invoke('scope:setRule', payload),
   scopeOverride: (payload) => ipcRenderer.invoke('scope:override', payload),
   scopeSetConversation: (payload) => ipcRenderer.invoke('scope:setConversation', payload),

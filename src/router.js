@@ -78,8 +78,7 @@ async function fetchFeed({ days = 14, limit = 60 } = {}) {
   let body = {};
   try { body = JSON.parse(text); } catch { return { ok: false, error: 'Bad feed JSON', entries: [] }; }
 
-  // Resolve identity so we can exclude the user's own posts (you don't
-  // collaborate with yourself — @specularist is James here).
+  // Resolve identity so we can exclude the user's own posts.
   const me = await whoami();
   const myHandle = me?.handle || null;
   const myPseudonym = me?.pseudonym || null;

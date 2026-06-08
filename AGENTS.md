@@ -65,6 +65,7 @@ pkill -f "router-daybook/node_modules/electron"; npm start
 |------|------|
 | `src/main.js` | Electron main; all `ipcMain` handlers; threads scope into collect/generate; `resolveName()` → user's FIRST name. |
 | `src/preload.js` | `contextBridge` — the only renderer↔main surface (`window.daybook.*`). Every channel needs a matching `ipcMain.handle`. |
+| `src/profile.js` | Local app profile (`~/.router-daybook/profile.json`), currently the Settings name. |
 | `src/transcripts.js` | Discover + compact sessions → digest. `collectSinceLastPost` (window), `collectToday`, `collectRecent`. Scope-filters before reading; masks secrets. Standalone-runnable. |
 | `src/reflect.js` | `generate()` → post + `firstQuestion`. Two scrub hops (digest in, post out). Prompt built from `postspec`. |
 | `src/postspec.js` | **LOCKED** post contract: `BANNED`, lead-in order, `LENGTH`, `THRESHOLD`, `RUBRIC_VERSION`. Shared by `reflect.js` and `evals/gates.js`. |
@@ -111,8 +112,9 @@ via `claude -p` (cloud inference on the user's subscription — always happens t
   for the old revise/learning (`learning.*`, `revise` IPC) still exists but is unused by the UI.
 - **Posts/intro are PLAIN TEXT** (no markdown) so they read clean in the editor. Lead-ins:
   `Wins / [Struggles] / Insight / [Offering] / [Asking]` — only Wins + Insight required.
-- **The user's first name comes from the PROMPT**, not the app. `claude -p` runs as the user, so the
-  prompt tells it to use their real first name; `resolveName()` is only a fallback string.
+- **The user's first name can be set in Settings.** It is saved locally in
+  `~/.router-daybook/profile.json`; `resolveName()` prefers `DAYBOOK_NAME`, then Settings, then
+  `~/.routerrc` `name`, and falls back to a neutral subject instead of guessing.
 - **The look is an experiment** — light + glitch + brutalist (rotating glitch disco ball, electric
   blue accent, square hard borders). It is NOT the calm dark theme; treat it as in-flux.
 

@@ -151,7 +151,7 @@ function isPrivateRepo(_fullPath, meta) {
 
 // ── The decision engine ─────────────────────────────────────────────────────
 // Precedence (first match wins):
-//   (1) per-path override: 'exclude' => excluded; 'include' => pinned included
+//   (1) per-path override: 'exclude' => excluded; 'include' => manually included
 //   (2) any exclude rule (path-prefix, private) => excluded with ruleId
 //   (3) any include rule (active-within-days via activity, or includePaths
 //       prefix) => included

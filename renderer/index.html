@@ -22,6 +22,7 @@
         <button class="link head-link" id="open-feedview" title="The cohort feed" aria-label="Open the cohort feed"><span aria-hidden="true">❏</span> Feed</button>
         <button class="link head-link" id="open-scope" title="What the Router can see" aria-label="Open Scope — what the Router can see"><span aria-hidden="true">◈</span> Scope</button>
         <button class="link head-link" id="open-link" title="Link another computer" aria-label="Link another computer"><span aria-hidden="true">⛓</span> Link</button>
+        <button class="link head-link" id="open-settings" title="Settings" aria-label="Open Settings">Settings</button>
         <span class="date" id="date">—</span>
       </div>
     </header>
@@ -228,9 +229,37 @@
       <div class="scope-headline">Which repos can the Router see?</div>
       <div class="scope-sub">Only the repos you turn on are read for your daily update. Everything else stays out.</div>
 
+      <div class="scope-tools">
+        <button class="btn ghost scope-picker" id="scope-add-folder">Add folder...</button>
+        <div class="scope-note" id="scope-note" role="status" aria-live="polite"></div>
+      </div>
+
       <div class="scope-list" id="scope-list"></div>
 
       <div class="scope-save"><button class="btn primary" id="scope-save">Done →</button></div>
+    </section>
+
+    <!-- SETTINGS: local app preferences -->
+    <section class="card settingsview" id="settings" hidden>
+      <div class="reflect-head">
+        <span class="eyebrow">Settings</span>
+        <button class="link" id="settings-back">← back</button>
+      </div>
+      <div class="scope-headline">Settings</div>
+      <div class="scope-sub">Saved on this machine.</div>
+
+      <div class="settings-form">
+        <label class="settings-field" for="settings-name">
+          <span class="settings-label">Name</span>
+          <input id="settings-name" class="fb-input settings-input" placeholder="Your name" autocomplete="name" spellcheck="false" maxlength="120" />
+        </label>
+        <div class="settings-meta" id="settings-effective"></div>
+      </div>
+
+      <div class="settings-actions">
+        <div class="settings-status" id="settings-status" role="status" aria-live="polite"></div>
+        <button class="btn primary" id="settings-save">Save →</button>
+      </div>
     </section>
 
     <footer class="actions" id="actions" hidden>
